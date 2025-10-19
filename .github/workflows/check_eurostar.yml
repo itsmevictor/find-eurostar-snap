@@ -6,7 +6,7 @@ on:
 
   schedule:
     # Runs every 10 minutes, except from midnight to 6am Paris time (22:00-04:00 UTC)
-    - cron: '*/10 4-21 * * *'
+    - cron: '*/10 4-22 * * *'
 
 jobs:
   check-and-notify:
