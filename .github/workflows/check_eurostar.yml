@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
 
   schedule:
-    # Runs every two hours
-    - cron: '0 */2 * * *'
+    # Runs every 10 minutes, except from midnight to 6am Paris time (22:00-04:00 UTC)
+    - cron: '*/10 4-21 * * *'
 
 jobs:
   check-and-notify:
