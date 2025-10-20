@@ -5,8 +5,12 @@ from email.mime.text import MIMEText
 import json
 
 # --- Configuration ---
-# Base URL for the Eurostar Snap API. The destination code will be inserted into this.
-BASE_URL = "https://snap.eurostar.com/_next/data/bmR4ZJH0w6ti5FN6-tty8/uk-en/search.json?adult=1&origin=7015400&outbound=2025-10-22&outslot=13%3A00&destination={destination_code}"
+# Base URL for the Eurostar Snap API. The date and destination code will be inserted into this.
+BASE_URL_FORMAT = "https://snap.eurostar.com/_next/data/bmR4ZJH0w6ti5FN6-tty8/uk-en/search.json?adult=1&origin=7015400&outbound={date}&outslot=13%3A00&destination={destination_code}"
+DATES_TO_CHECK = {
+    "2025-10-22": ["Lille", "Brussels", "Amsterdam"],
+    "2025-10-29": ["Lille", "Brussels"]
+}
 
 DESTINATIONS = {
     "Lille": "8722326",
@@ -44,46 +48,49 @@ def send_notification_email(subject, body, sender_email=MY_EMAIL, receiver_email
 
 # --- Main Logic ---
 def check_all_destinations():
-    """Checks all configured destinations for available tickets and sends one summary email."""
-    print("Starting Eurostar Snap ticket check for all destinations...")
+    """Checks all configured destinations and dates for available tickets and sends one summary email."""
+    print("Starting Eurostar Snap ticket check...")
     all_available_tickets_info = []
 
-    for city, code in DESTINATIONS.items():
-        print(f"-- Checking for tickets to {city}...")
-        url = BASE_URL.format(destination_code=code)
-        
-        try:
-            response = requests.get(url)
-            response.raise_for_status()  # Check for HTTP errors
-            data = response.json()
-            time_slots = data.get("pageProps", {}).get("outboundTimeSlots", [])
+    for date, cities in DATES_TO_CHECK.items():
+        print(f"\n--- Checking for date: {date} ---")
+        for city in cities:
+            code = DESTINATIONS[city]
+            print(f"-- Checking for tickets to {city}...")
+            url = BASE_URL_FORMAT.format(date=date, destination_code=code)
+            
+            try:
+                response = requests.get(url)
+                response.raise_for_status()  # Check for HTTP errors
+                data = response.json()
+                time_slots = data.get("pageProps", {}).get("outboundTimeSlots", [])
 
-            if not time_slots:
-                print(f"   No time slots found in the response for {city}.")
-                continue
+                if not time_slots:
+                    print(f"   No time slots found in the response for {city} on {date}.")
+                    continue
 
-            # Find slots that have a fare
-            available_slots = [slot for slot in time_slots if slot.get("fare") is not None]
+                # Find slots that have a fare
+                available_slots = [slot for slot in time_slots if slot.get("fare") is not None]
 
-            if available_slots:
-                info_line = f"Found {len(available_slots)} available slot(s) for London to {city}:"
-                print(f"   {info_line}")
-                all_available_tickets_info.append(info_line)
-                for slot in available_slots:
-                    window = slot.get("departureWindow", {})
-                    earliest = window.get('earliest', 'N/A').split(' ')[1]
-                    latest = window.get('latest', 'N/A').split(' ')[1]
-                    price = slot.get("fare", {}).get("prices", {}).get("displayPrice", "N/A")
-                    slot_info = f"  - Window: {earliest} - {latest}, Price: £{price}"
-                    print(f"     {slot_info}")
-                    all_available_tickets_info.append(slot_info)
-            else:
-                print(f"   No available tickets found for {city}.")
+                if available_slots:
+                    info_line = f"Found {len(available_slots)} available slot(s) for London to {city} on {date}:"
+                    print(f"   {info_line}")
+                    all_available_tickets_info.append(info_line)
+                    for slot in available_slots:
+                        window = slot.get("departureWindow", {})
+                        earliest = window.get('earliest', 'N/A').split(' ')[1]
+                        latest = window.get('latest', 'N/A').split(' ')[1]
+                        price = slot.get("fare", {}).get("prices", {}).get("displayPrice", "N/A")
+                        slot_info = f"  - Window: {earliest} - {latest}, Price: £{price}"
+                        print(f"     {slot_info}")
+                        all_available_tickets_info.append(slot_info)
+                else:
+                    print(f"   No available tickets found for {city} on {date}.")
 
-        except requests.exceptions.RequestException as e:
-            print(f"   Error fetching data for {city}: {e}")
-        except (json.JSONDecodeError, AttributeError):
-            print(f"   Error parsing data for {city}.")
+            except requests.exceptions.RequestException as e:
+                print(f"   Error fetching data for {city} on {date}: {e}")
+            except (json.JSONDecodeError, AttributeError):
+                print(f"   Error parsing data for {city} on {date}.")
 
     # After checking all destinations, send one email if any tickets were found
     if all_available_tickets_info:
@@ -92,7 +99,7 @@ def check_all_destinations():
         email_body = "\n".join(all_available_tickets_info)
         send_notification_email(email_subject, email_body)
     else:
-        print("\nFinished check. No available tickets found for any destination.")
+        print("\nFinished check. No available tickets found for any destination on any date.")
 
 if __name__ == "__main__":
     check_all_destinations()
