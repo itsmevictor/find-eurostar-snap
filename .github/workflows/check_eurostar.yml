@@ -4,10 +4,6 @@ name: Check for Eurostar Tickets
 on:
   workflow_dispatch:
 
-  schedule:
-    # Runs every 15 minutes, except from midnight to 6am Paris time (22:00-04:00 UTC)
-    - cron: '*/15 4-22 * * *'
-
 jobs:
   check-and-notify:
     runs-on: ubuntu-latest
