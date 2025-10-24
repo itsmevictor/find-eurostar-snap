@@ -91,8 +91,10 @@ def check_all_destinations():
                 all_available_tickets_info.append(info_line)
                 for slot in available_slots:
                     window = slot.get("departureWindow", {})
-                    earliest = window.get('earliest', 'N/A').split(' ')[1]
-                    latest = window.get('latest', 'N/A').split(' ')[1]
+                    earliest_raw = window.get('earliest') or 'N/A'
+                    earliest = earliest_raw.split(' ')[1] if ' ' in earliest_raw else earliest_raw
+                    latest_raw = window.get('latest') or 'N/A'
+                    latest = latest_raw.split(' ')[1] if ' ' in latest_raw else latest_raw
                     price = slot.get("fare", {}).get("prices", {}).get("displayPrice", "N/A")
                     slot_info = f"  - Window: {earliest} - {latest}, Price: £{price}"
                     print(f"     {slot_info}")
